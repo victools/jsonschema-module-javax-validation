@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [3.0.0] – 2019-06-10
 ### Added
 - Consider the same validation annotations on a getter method also for its field
 - Consider the same validation annotations on a field also for its getter method
@@ -25,5 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Indicate a number's "maximum" (inclusive) according to `@Max`, `@DecimalMax` or `@NegativeOrZero`
 - Indicate a number's "exclusiveMaximum" according to `@DecimalMax` or `@Negative`
 
-[Unreleased]: https://github.com/victools/jsonschema-module-javax-validation/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/victools/jsonschema-module-javax-validation/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/victools/jsonschema-module-javax-validation/compare/v1.0.0...v3.0.0
 [1.0.0]: https://github.com/victools/jsonschema-module-javax-validation/releases/tag/v1.0.0

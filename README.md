@@ -19,7 +19,7 @@ Schema attributes derived from validation annotations on getter methods are also
 <dependency>
     <groupId>com.github.victools</groupId>
     <artifactId>jsonschema-module-javax-validation</artifactId>
-    <version>1.0.0</version>
+    <version>3.0.0</version>
 </dependency>
 ```
 
