@@ -16,12 +16,13 @@
 
 package com.github.victools.jsonschema.module.javax.validation;
 
-import com.github.victools.jsonschema.generator.JavaType;
+import com.github.victools.jsonschema.generator.FieldScope;
+import com.github.victools.jsonschema.generator.MemberScope;
+import com.github.victools.jsonschema.generator.MethodScope;
 import com.github.victools.jsonschema.generator.Module;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigPart;
-import com.github.victools.jsonschema.generator.impl.ReflectionTypeUtils;
-import java.lang.reflect.AccessibleObject;
+import java.lang.annotation.Annotation;
 import java.math.BigDecimal;
 import javax.validation.constraints.DecimalMax;
 import javax.validation.constraints.DecimalMin;
@@ -38,7 +39,13 @@ import javax.validation.constraints.PositiveOrZero;
 import javax.validation.constraints.Size;
 
 /**
- * With this module, the base assumption for the nullable indication is that all fields and methods are nullable unless annotated otherwise.
+ * JSON Schema Generation Module: based on annotations from the {@code javax.validation.constraints} package.
+ * <ul>
+ * <li>Determine whether a member is not nullable, base assumption being that all fields and method return values are nullable if not annotated.</li>
+ * <li>Populate "minItems" and "maxItems" for containers (i.e. arrays and collections).</li>
+ * <li>Populate "minLength" and "maxLength" for strings.</li>
+ * <li>Populate "minimum"/"exclusiveMinimum" and "maximum"/"exclusiveMaximum" for numbers.</li>
+ * </ul>
  */
 public class JavaxValidationModule implements Module {
 
@@ -53,7 +60,7 @@ public class JavaxValidationModule implements Module {
      *
      * @param configPart config builder part to add configurations to
      */
-    private void applyToConfigPart(SchemaGeneratorConfigPart<? extends AccessibleObject> configPart) {
+    private void applyToConfigPart(SchemaGeneratorConfigPart<?> configPart) {
         configPart.withNullableCheck(this::isNullable);
         configPart.withArrayMinItemsResolver(this::resolveArrayMinItems);
         configPart.withArrayMaxItemsResolver(this::resolveArrayMaxItems);
@@ -66,20 +73,46 @@ public class JavaxValidationModule implements Module {
     }
 
     /**
+     * Retrieves the annotation instance of the given type, either from the field it self or (if not present) from its getter.
+     *
+     * @param <A> type of annotation
+     * @param member field or method to retrieve annotation instance from (or from a field's getter or getter method's field)
+     * @param annotationClass type of annotation
+     * @return annotation instance (or {@code null})
+     * @see MemberScope#getAnnotation(Class)
+     * @see FieldScope#findGetter()
+     * @see MethodScope#findGetterField()
+     */
+    protected <A extends Annotation> A getAnnotationFromFieldOrGetter(MemberScope<?, ?> member, Class<A> annotationClass) {
+        A annotation = member.getAnnotation(annotationClass);
+        if (annotation == null) {
+            MemberScope<?, ?> associatedGetterOrField;
+            if (member instanceof FieldScope) {
+                associatedGetterOrField = ((FieldScope) member).findGetter();
+            } else if (member instanceof MethodScope) {
+                associatedGetterOrField = ((MethodScope) member).findGetterField();
+            } else {
+                associatedGetterOrField = null;
+            }
+            annotation = associatedGetterOrField == null ? null : associatedGetterOrField.getAnnotation(annotationClass);
+        }
+        return annotation;
+    }
+
+    /**
      * Determine whether a given field or method is annotated to be not nullable.
      *
-     * @param fieldOrMethod the field or method to check
-     * @param type field's or method return value's type
-     * @return whether the field/method is specifically annotated as nullable or not (returns null if not specified: assumption it is nullable then)
+     * @param member the field or method to check
+     * @return whether member is annotated as nullable or not (returns null if not specified: assumption it is nullable then)
      */
-    private Boolean isNullable(AccessibleObject fieldOrMethod, JavaType type) {
+    protected Boolean isNullable(MemberScope<?, ?> member) {
         Boolean result;
-        if (fieldOrMethod.isAnnotationPresent(NotNull.class)
-                || fieldOrMethod.isAnnotationPresent(NotBlank.class)
-                || fieldOrMethod.isAnnotationPresent(NotEmpty.class)) {
+        if (this.getAnnotationFromFieldOrGetter(member, NotNull.class) != null
+                || this.getAnnotationFromFieldOrGetter(member, NotBlank.class) != null
+                || this.getAnnotationFromFieldOrGetter(member, NotEmpty.class) != null) {
             // field is specifically NOT nullable
             result = Boolean.FALSE;
-        } else if (fieldOrMethod.isAnnotationPresent(Null.class)) {
+        } else if (this.getAnnotationFromFieldOrGetter(member, Null.class) != null) {
             // field is specifically null (and thereby nullable)
             result = Boolean.TRUE;
         } else {
@@ -91,19 +124,18 @@ public class JavaxValidationModule implements Module {
     /**
      * Determine a given array type's minimum number of items.
      *
-     * @param fieldOrMethod the field or method to check
-     * @param type field's or method return value's type
+     * @param member the field or method to check
      * @return specified minimum number of array items (or null)
      * @see Size
      */
-    private Integer resolveArrayMinItems(AccessibleObject fieldOrMethod, JavaType type) {
-        if (ReflectionTypeUtils.isArrayType(type)) {
-            Size sizeAnnotation = fieldOrMethod.getAnnotation(Size.class);
+    protected Integer resolveArrayMinItems(MemberScope<?, ?> member) {
+        if (member.isContainerType()) {
+            Size sizeAnnotation = this.getAnnotationFromFieldOrGetter(member, Size.class);
             if (sizeAnnotation != null && sizeAnnotation.min() > 0) {
                 // minimum length greater than the default 0 was specified
                 return sizeAnnotation.min();
             }
-            if (fieldOrMethod.isAnnotationPresent(NotEmpty.class)) {
+            if (this.getAnnotationFromFieldOrGetter(member, NotEmpty.class) != null) {
                 return 1;
             }
         }
@@ -113,14 +145,13 @@ public class JavaxValidationModule implements Module {
     /**
      * Determine a given array type's maximum number of items.
      *
-     * @param fieldOrMethod the field or method to check
-     * @param type field's or method return value's type
+     * @param member the field or method to check
      * @return specified maximum number of array items (or null)
      * @see Size
      */
-    private Integer resolveArrayMaxItems(AccessibleObject fieldOrMethod, JavaType type) {
-        if (ReflectionTypeUtils.isArrayType(type)) {
-            Size sizeAnnotation = fieldOrMethod.getAnnotation(Size.class);
+    protected Integer resolveArrayMaxItems(MemberScope<?, ?> member) {
+        if (member.isContainerType()) {
+            Size sizeAnnotation = this.getAnnotationFromFieldOrGetter(member, Size.class);
             if (sizeAnnotation != null && sizeAnnotation.max() < 2147483647) {
                 // maximum length below the default 2147483647 was specified
                 return sizeAnnotation.max();
@@ -132,23 +163,21 @@ public class JavaxValidationModule implements Module {
     /**
      * Determine a given text type's minimum number of characters.
      *
-     * @param fieldOrMethod the field or method to check
-     * @param type field's or method return value's type
+     * @param member the field or method to check
      * @return specified minimum number of characters (or null)
      * @see Size
      * @see NotEmpty
      * @see NotBlank
      */
-    private Integer resolveStringMinLength(AccessibleObject fieldOrMethod, JavaType type) {
-        Class<?> rawType = ReflectionTypeUtils.getRawType(type.getResolvedType());
-        if (CharSequence.class.isAssignableFrom(rawType)) {
-            Size sizeAnnotation = fieldOrMethod.getAnnotation(Size.class);
+    protected Integer resolveStringMinLength(MemberScope<?, ?> member) {
+        if (member.getType().isInstanceOf(CharSequence.class)) {
+            Size sizeAnnotation = this.getAnnotationFromFieldOrGetter(member, Size.class);
             if (sizeAnnotation != null && sizeAnnotation.min() > 0) {
                 // minimum length greater than the default 0 was specified
                 return sizeAnnotation.min();
             }
-            if (fieldOrMethod.isAnnotationPresent(NotEmpty.class)
-                    || fieldOrMethod.isAnnotationPresent(NotBlank.class)) {
+            if (this.getAnnotationFromFieldOrGetter(member, NotEmpty.class) != null
+                    || this.getAnnotationFromFieldOrGetter(member, NotBlank.class) != null) {
                 return 1;
             }
         }
@@ -158,15 +187,13 @@ public class JavaxValidationModule implements Module {
     /**
      * Determine a given text type's maximum number of characters.
      *
-     * @param fieldOrMethod the field or method to check
-     * @param type field's or method return value's type
+     * @param member the field or method to check
      * @return specified minimum number of characters (or null)
      * @see Size
      */
-    private Integer resolveStringMaxLength(AccessibleObject fieldOrMethod, JavaType type) {
-        Class<?> rawType = ReflectionTypeUtils.getRawType(type.getResolvedType());
-        if (CharSequence.class.isAssignableFrom(rawType)) {
-            Size sizeAnnotation = fieldOrMethod.getAnnotation(Size.class);
+    protected Integer resolveStringMaxLength(MemberScope<?, ?> member) {
+        if (member.getType().isInstanceOf(CharSequence.class)) {
+            Size sizeAnnotation = this.getAnnotationFromFieldOrGetter(member, Size.class);
             if (sizeAnnotation != null && sizeAnnotation.max() < 2147483647) {
                 // maximum length below the default 2147483647 was specified
                 return sizeAnnotation.max();
@@ -178,23 +205,22 @@ public class JavaxValidationModule implements Module {
     /**
      * Determine a number type's minimum (inclusive) value.
      *
-     * @param fieldOrMethod the field or method to check
-     * @param type field's or method return value's type
+     * @param member the field or method to check
      * @return specified inclusive minimum value (or null)
      * @see Min
      * @see DecimalMin
      * @see PositiveOrZero
      */
-    private BigDecimal resolveNumberInclusiveMinimum(AccessibleObject fieldOrMethod, JavaType type) {
-        Min minAnnotation = fieldOrMethod.getAnnotation(Min.class);
+    protected BigDecimal resolveNumberInclusiveMinimum(MemberScope<?, ?> member) {
+        Min minAnnotation = this.getAnnotationFromFieldOrGetter(member, Min.class);
         if (minAnnotation != null) {
             return new BigDecimal(minAnnotation.value());
         }
-        DecimalMin decimalMinAnnotation = fieldOrMethod.getAnnotation(DecimalMin.class);
+        DecimalMin decimalMinAnnotation = this.getAnnotationFromFieldOrGetter(member, DecimalMin.class);
         if (decimalMinAnnotation != null && decimalMinAnnotation.inclusive()) {
             return new BigDecimal(decimalMinAnnotation.value());
         }
-        PositiveOrZero positiveAnnotation = fieldOrMethod.getAnnotation(PositiveOrZero.class);
+        PositiveOrZero positiveAnnotation = this.getAnnotationFromFieldOrGetter(member, PositiveOrZero.class);
         if (positiveAnnotation != null) {
             return BigDecimal.ZERO;
         }
@@ -204,18 +230,17 @@ public class JavaxValidationModule implements Module {
     /**
      * Determine a number type's minimum (exclusive) value.
      *
-     * @param fieldOrMethod the field or method to check
-     * @param type field's or method return value's type
+     * @param member the field or method to check
      * @return specified exclusive minimum value (or null)
      * @see DecimalMin
      * @see Positive
      */
-    private BigDecimal resolveNumberExclusiveMinimum(AccessibleObject fieldOrMethod, JavaType type) {
-        DecimalMin decimalMinAnnotation = fieldOrMethod.getAnnotation(DecimalMin.class);
+    protected BigDecimal resolveNumberExclusiveMinimum(MemberScope<?, ?> member) {
+        DecimalMin decimalMinAnnotation = this.getAnnotationFromFieldOrGetter(member, DecimalMin.class);
         if (decimalMinAnnotation != null && !decimalMinAnnotation.inclusive()) {
             return new BigDecimal(decimalMinAnnotation.value());
         }
-        Positive positiveAnnotation = fieldOrMethod.getAnnotation(Positive.class);
+        Positive positiveAnnotation = this.getAnnotationFromFieldOrGetter(member, Positive.class);
         if (positiveAnnotation != null) {
             return BigDecimal.ZERO;
         }
@@ -225,23 +250,22 @@ public class JavaxValidationModule implements Module {
     /**
      * Determine a number type's maximum (inclusive) value.
      *
-     * @param fieldOrMethod the field or method to check
-     * @param type field's or method return value's type
+     * @param member the field or method to check
      * @return specified inclusive maximum value (or null)
      * @see Max
      * @see DecimalMax#inclusive()
      * @see NegativeOrZero
      */
-    private BigDecimal resolveNumberInclusiveMaximum(AccessibleObject fieldOrMethod, JavaType type) {
-        Max maxAnnotation = fieldOrMethod.getAnnotation(Max.class);
+    protected BigDecimal resolveNumberInclusiveMaximum(MemberScope<?, ?> member) {
+        Max maxAnnotation = this.getAnnotationFromFieldOrGetter(member, Max.class);
         if (maxAnnotation != null) {
             return new BigDecimal(maxAnnotation.value());
         }
-        DecimalMax decimalMaxAnnotation = fieldOrMethod.getAnnotation(DecimalMax.class);
+        DecimalMax decimalMaxAnnotation = this.getAnnotationFromFieldOrGetter(member, DecimalMax.class);
         if (decimalMaxAnnotation != null && decimalMaxAnnotation.inclusive()) {
             return new BigDecimal(decimalMaxAnnotation.value());
         }
-        NegativeOrZero negativeAnnotation = fieldOrMethod.getAnnotation(NegativeOrZero.class);
+        NegativeOrZero negativeAnnotation = this.getAnnotationFromFieldOrGetter(member, NegativeOrZero.class);
         if (negativeAnnotation != null) {
             return BigDecimal.ZERO;
         }
@@ -251,18 +275,17 @@ public class JavaxValidationModule implements Module {
     /**
      * Determine a number type's maximum (exclusive) value.
      *
-     * @param fieldOrMethod the field or method to check
-     * @param type field's or method return value's type
+     * @param member the field or method to check
      * @return specified exclusive maximum value (or null)
      * @see DecimalMax#inclusive()
      * @see Negative
      */
-    private BigDecimal resolveNumberExclusiveMaximum(AccessibleObject fieldOrMethod, JavaType type) {
-        DecimalMax decimalMaxAnnotation = fieldOrMethod.getAnnotation(DecimalMax.class);
+    protected BigDecimal resolveNumberExclusiveMaximum(MemberScope<?, ?> member) {
+        DecimalMax decimalMaxAnnotation = this.getAnnotationFromFieldOrGetter(member, DecimalMax.class);
         if (decimalMaxAnnotation != null && !decimalMaxAnnotation.inclusive()) {
             return new BigDecimal(decimalMaxAnnotation.value());
         }
-        Negative negativeAnnotation = fieldOrMethod.getAnnotation(Negative.class);
+        Negative negativeAnnotation = this.getAnnotationFromFieldOrGetter(member, Negative.class);
         if (negativeAnnotation != null) {
             return BigDecimal.ZERO;
         }

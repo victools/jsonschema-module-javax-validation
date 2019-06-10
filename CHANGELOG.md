@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Consider the same validation annotations on a getter method also for its field
+- Consider the same validation annotations on a field also for its getter method
+
+### Changed
+- Internal changes to comply with latest `jsonschema-generator` release `v3.x`
 
 ## v1.0.0 – 2019-05-22
 ### Added

@@ -16,17 +16,15 @@
 
 package com.github.victools.jsonschema.module.javax.validation;
 
-import com.github.victools.jsonschema.generator.JavaType;
+import com.github.victools.jsonschema.generator.ConfigFunction;
+import com.github.victools.jsonschema.generator.FieldScope;
+import com.github.victools.jsonschema.generator.MethodScope;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigPart;
-import com.github.victools.jsonschema.generator.TypeVariableContext;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Set;
-import java.util.function.BiFunction;
 import javax.validation.constraints.DecimalMax;
 import javax.validation.constraints.DecimalMin;
 import javax.validation.constraints.Max;
@@ -56,14 +54,14 @@ import org.mockito.Mockito;
 public class JavaxValidationModuleTest {
 
     private SchemaGeneratorConfigBuilder configBuilder;
-    private SchemaGeneratorConfigPart<Field> fieldConfigPart;
-    private SchemaGeneratorConfigPart<Method> methodConfigPart;
+    private SchemaGeneratorConfigPart<FieldScope> fieldConfigPart;
+    private SchemaGeneratorConfigPart<MethodScope> methodConfigPart;
 
     @Before
     public void setUp() {
         this.configBuilder = Mockito.mock(SchemaGeneratorConfigBuilder.class);
-        this.fieldConfigPart = Mockito.mock(SchemaGeneratorConfigPart.class);
-        this.methodConfigPart = Mockito.mock(SchemaGeneratorConfigPart.class);
+        this.fieldConfigPart = Mockito.spy(new SchemaGeneratorConfigPart<>());
+        this.methodConfigPart = Mockito.spy(new SchemaGeneratorConfigPart<>());
         Mockito.when(this.configBuilder.forFields()).thenReturn(this.fieldConfigPart);
         Mockito.when(this.configBuilder.forMethods()).thenReturn(this.methodConfigPart);
     }
@@ -102,21 +100,42 @@ public class JavaxValidationModuleTest {
         return new Object[][]{
             {"unannotatedField", null},
             {"notNullNumber", Boolean.FALSE},
+            {"notNullOnGetterNumber", Boolean.FALSE},
             {"notEmptyList", Boolean.FALSE},
+            {"notEmptyOnGetterList", Boolean.FALSE},
             {"notBlankString", Boolean.FALSE},
-            {"nullField", Boolean.TRUE}
+            {"notBlankOnGetterString", Boolean.FALSE},
+            {"nullField", Boolean.TRUE},
+            {"nullGetter", Boolean.TRUE}
         };
     }
 
     @Test
-    @Parameters
-    public void testNullableCheck(String fieldName, Boolean expectedResult) throws Exception {
+    @Parameters(method = "parametersForTestNullableCheck")
+    public void testNullableCheckOnField(String fieldName, Boolean expectedResult) throws Exception {
         new JavaxValidationModule().applyToConfigBuilder(this.configBuilder);
 
-        ArgumentCaptor<BiFunction<Field, JavaType, Boolean>> captor = ArgumentCaptor.forClass(BiFunction.class);
+        ArgumentCaptor<ConfigFunction<FieldScope, Boolean>> captor = ArgumentCaptor.forClass(ConfigFunction.class);
         Mockito.verify(this.fieldConfigPart).withNullableCheck(captor.capture());
+        TestType testType = new TestType(TestClassForNullableCheck.class);
+        FieldScope field = testType.getMemberField(fieldName);
 
-        Boolean result = captor.getValue().apply(TestClassForNullableCheck.class.getDeclaredField(fieldName), null);
+        Boolean result = captor.getValue().apply(field);
+        Assert.assertEquals(expectedResult, result);
+    }
+
+    @Test
+    @Parameters(method = "parametersForTestNullableCheck")
+    public void testNullableCheckOnMethod(String fieldName, Boolean expectedResult) throws Exception {
+        new JavaxValidationModule().applyToConfigBuilder(this.configBuilder);
+
+        ArgumentCaptor<ConfigFunction<MethodScope, Boolean>> captor = ArgumentCaptor.forClass(ConfigFunction.class);
+        Mockito.verify(this.methodConfigPart).withNullableCheck(captor.capture());
+        TestType testType = new TestType(TestClassForNullableCheck.class);
+        String methodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+        MethodScope method = testType.getMemberMethod(methodName);
+
+        Boolean result = captor.getValue().apply(method);
         Assert.assertEquals(expectedResult, result);
     }
 
@@ -124,10 +143,15 @@ public class JavaxValidationModuleTest {
         return new Object[][]{
             {"unannotatedArray", null, null},
             {"sizeTenToTwentyString", null, null},
+            {"sizeTenToTwentyOnGetterString", null, null},
             {"minSizeFiveArray", 5, null},
+            {"minSizeFiveOnGetterArray", 5, null},
             {"maxSizeFiftyArray", null, 50},
+            {"maxSizeFiftyOnGetterArray", null, 50},
             {"sizeTenToTwentySet", 10, 20},
-            {"nonEmptyMaxSizeHundredList", 1, 100}
+            {"sizeTenToTwentyOnGetterSet", 10, 20},
+            {"nonEmptyMaxSizeHundredList", 1, 100},
+            {"nonEmptyMaxSizeHundredOnGetterList", 1, 100}
         };
     }
 
@@ -136,17 +160,17 @@ public class JavaxValidationModuleTest {
     public void testArrayItemCountResolvers(String fieldName, Integer expectedMinItems, Integer expectedMaxItems) throws Exception {
         new JavaxValidationModule().applyToConfigBuilder(this.configBuilder);
 
-        Field field = TestClassForArrayItemCount.class.getDeclaredField(fieldName);
-        JavaType fieldType = new JavaType(field.getGenericType(), TypeVariableContext.EMPTY_SCOPE);
+        TestType testType = new TestType(TestClassForArrayItemCount.class);
+        FieldScope field = testType.getMemberField(fieldName);
 
-        ArgumentCaptor<BiFunction<Field, JavaType, Integer>> minItemCaptor = ArgumentCaptor.forClass(BiFunction.class);
+        ArgumentCaptor<ConfigFunction<FieldScope, Integer>> minItemCaptor = ArgumentCaptor.forClass(ConfigFunction.class);
         Mockito.verify(this.fieldConfigPart).withArrayMinItemsResolver(minItemCaptor.capture());
-        Integer minItemCount = minItemCaptor.getValue().apply(field, fieldType);
+        Integer minItemCount = minItemCaptor.getValue().apply(field);
         Assert.assertEquals(expectedMinItems, minItemCount);
 
-        ArgumentCaptor<BiFunction<Field, JavaType, Integer>> maxItemCaptor = ArgumentCaptor.forClass(BiFunction.class);
+        ArgumentCaptor<ConfigFunction<FieldScope, Integer>> maxItemCaptor = ArgumentCaptor.forClass(ConfigFunction.class);
         Mockito.verify(this.fieldConfigPart).withArrayMaxItemsResolver(maxItemCaptor.capture());
-        Integer maxItemCount = maxItemCaptor.getValue().apply(field, fieldType);
+        Integer maxItemCount = maxItemCaptor.getValue().apply(field);
         Assert.assertEquals(expectedMaxItems, maxItemCount);
     }
 
@@ -154,11 +178,17 @@ public class JavaxValidationModuleTest {
         return new Object[][]{
             {"unannotatedString", null, null},
             {"sizeTenToTwentyArray", null, null},
+            {"sizeTenToTwentyOnGetterArray", null, null},
             {"minSizeFiveSequence", 5, null},
+            {"minSizeFiveOnGetterSequence", 5, null},
             {"maxSizeFiftyString", null, 50},
+            {"maxSizeFiftyOnGetterString", null, 50},
             {"sizeTenToTwentyString", 10, 20},
+            {"sizeTenToTwentyOnGetterString", 10, 20},
             {"nonEmptyMaxSizeHundredString", 1, 100},
-            {"nonBlankString", 1, null}
+            {"nonEmptyMaxSizeHundredOnGetterString", 1, 100},
+            {"nonBlankString", 1, null},
+            {"nonBlankOnGetterString", 1, null}
         };
     }
 
@@ -167,17 +197,17 @@ public class JavaxValidationModuleTest {
     public void testStringLengthResolvers(String fieldName, Integer expectedMinLength, Integer expectedMaxLength) throws Exception {
         new JavaxValidationModule().applyToConfigBuilder(this.configBuilder);
 
-        Field field = TestClassForStringLength.class.getDeclaredField(fieldName);
-        JavaType fieldType = new JavaType(field.getGenericType(), TypeVariableContext.EMPTY_SCOPE);
+        TestType testType = new TestType(TestClassForStringLength.class);
+        FieldScope field = testType.getMemberField(fieldName);
 
-        ArgumentCaptor<BiFunction<Field, JavaType, Integer>> minLengthCaptor = ArgumentCaptor.forClass(BiFunction.class);
+        ArgumentCaptor<ConfigFunction<FieldScope, Integer>> minLengthCaptor = ArgumentCaptor.forClass(ConfigFunction.class);
         Mockito.verify(this.fieldConfigPart).withStringMinLengthResolver(minLengthCaptor.capture());
-        Integer minLength = minLengthCaptor.getValue().apply(field, fieldType);
+        Integer minLength = minLengthCaptor.getValue().apply(field);
         Assert.assertEquals(expectedMinLength, minLength);
 
-        ArgumentCaptor<BiFunction<Field, JavaType, Integer>> maxLengthCaptor = ArgumentCaptor.forClass(BiFunction.class);
+        ArgumentCaptor<ConfigFunction<FieldScope, Integer>> maxLengthCaptor = ArgumentCaptor.forClass(ConfigFunction.class);
         Mockito.verify(this.fieldConfigPart).withStringMaxLengthResolver(maxLengthCaptor.capture());
-        Integer maxLength = maxLengthCaptor.getValue().apply(field, fieldType);
+        Integer maxLength = maxLengthCaptor.getValue().apply(field);
         Assert.assertEquals(expectedMaxLength, maxLength);
     }
 
@@ -185,13 +215,21 @@ public class JavaxValidationModuleTest {
         return new Object[][]{
             {"unannotatedInt", null, null, null, null},
             {"minMinusHundredLong", "-100", null, null, null},
+            {"minMinusHundredOnGetterLong", "-100", null, null, null},
             {"maxFiftyShort", null, null, "50", null},
+            {"maxFiftyOnGetterShort", null, null, "50", null},
             {"tenToTwentyInclusiveInteger", "10.1", null, "20.2", null},
+            {"tenToTwentyInclusiveOnGetterInteger", "10.1", null, "20.2", null},
             {"tenToTwentyExclusiveInteger", null, "10.1", null, "20.2"},
+            {"tenToTwentyExclusiveOnGetterInteger", null, "10.1", null, "20.2"},
             {"positiveByte", null, BigDecimal.ZERO, null, null},
+            {"positiveOnGetterByte", null, BigDecimal.ZERO, null, null},
             {"positiveOrZeroBigInteger", BigDecimal.ZERO, null, null, null},
+            {"positiveOrZeroOnGetterBigInteger", BigDecimal.ZERO, null, null, null},
             {"negativeDecimal", null, null, null, BigDecimal.ZERO},
-            {"negativeOrZeroLong", null, null, BigDecimal.ZERO, null}
+            {"negativeOnGetterDecimal", null, null, null, BigDecimal.ZERO},
+            {"negativeOrZeroLong", null, null, BigDecimal.ZERO, null},
+            {"negativeOrZeroOnGetterLong", null, null, BigDecimal.ZERO, null}
         };
     }
 
@@ -201,27 +239,27 @@ public class JavaxValidationModuleTest {
             BigDecimal expectedMaxInclusive, BigDecimal expectedMaxExclusive) throws Exception {
         new JavaxValidationModule().applyToConfigBuilder(this.configBuilder);
 
-        Field field = TestClassForNumberMinMax.class.getDeclaredField(fieldName);
-        JavaType fieldType = new JavaType(field.getGenericType(), TypeVariableContext.EMPTY_SCOPE);
+        TestType testType = new TestType(TestClassForNumberMinMax.class);
+        FieldScope field = testType.getMemberField(fieldName);
 
-        ArgumentCaptor<BiFunction<Field, JavaType, BigDecimal>> minInclusiveCaptor = ArgumentCaptor.forClass(BiFunction.class);
+        ArgumentCaptor<ConfigFunction<FieldScope, BigDecimal>> minInclusiveCaptor = ArgumentCaptor.forClass(ConfigFunction.class);
         Mockito.verify(this.fieldConfigPart).withNumberInclusiveMinimumResolver(minInclusiveCaptor.capture());
-        BigDecimal minInclusive = minInclusiveCaptor.getValue().apply(field, fieldType);
+        BigDecimal minInclusive = minInclusiveCaptor.getValue().apply(field);
         Assert.assertEquals(expectedMinInclusive, minInclusive);
 
-        ArgumentCaptor<BiFunction<Field, JavaType, BigDecimal>> minExclusiveCaptor = ArgumentCaptor.forClass(BiFunction.class);
+        ArgumentCaptor<ConfigFunction<FieldScope, BigDecimal>> minExclusiveCaptor = ArgumentCaptor.forClass(ConfigFunction.class);
         Mockito.verify(this.fieldConfigPart).withNumberExclusiveMinimumResolver(minExclusiveCaptor.capture());
-        BigDecimal minExclusive = minExclusiveCaptor.getValue().apply(field, fieldType);
+        BigDecimal minExclusive = minExclusiveCaptor.getValue().apply(field);
         Assert.assertEquals(expectedMinExclusive, minExclusive);
 
-        ArgumentCaptor<BiFunction<Field, JavaType, BigDecimal>> maxInclusiveCaptor = ArgumentCaptor.forClass(BiFunction.class);
+        ArgumentCaptor<ConfigFunction<FieldScope, BigDecimal>> maxInclusiveCaptor = ArgumentCaptor.forClass(ConfigFunction.class);
         Mockito.verify(this.fieldConfigPart).withNumberInclusiveMaximumResolver(maxInclusiveCaptor.capture());
-        BigDecimal maxInclusive = maxInclusiveCaptor.getValue().apply(field, fieldType);
+        BigDecimal maxInclusive = maxInclusiveCaptor.getValue().apply(field);
         Assert.assertEquals(expectedMaxInclusive, maxInclusive);
 
-        ArgumentCaptor<BiFunction<Field, JavaType, BigDecimal>> maxExclusiveCaptor = ArgumentCaptor.forClass(BiFunction.class);
+        ArgumentCaptor<ConfigFunction<FieldScope, BigDecimal>> maxExclusiveCaptor = ArgumentCaptor.forClass(ConfigFunction.class);
         Mockito.verify(this.fieldConfigPart).withNumberExclusiveMaximumResolver(maxExclusiveCaptor.capture());
-        BigDecimal maxExclusive = maxExclusiveCaptor.getValue().apply(field, fieldType);
+        BigDecimal maxExclusive = maxExclusiveCaptor.getValue().apply(field);
         Assert.assertEquals(expectedMaxExclusive, maxExclusive);
     }
 
@@ -230,18 +268,56 @@ public class JavaxValidationModuleTest {
         Integer unannotatedField;
         @NotNull
         Double notNullNumber;
+        Double notNullOnGetterNumber;
         @NotEmpty
         List<Object> notEmptyList;
+        List<Object> notEmptyOnGetterList;
         @NotBlank
         String notBlankString;
+        String notBlankOnGetterString;
         @Null
         Object nullField;
-        @Size(min = 5)
-        int[] minSizeFiveArray;
-        @Size(max = 50)
-        long[] maxSizeFiftyArray;
-        @Size(min = 10, max = 20)
-        Set<Boolean> sizeTenToTwentySet;
+        Object nullGetter;
+
+        public Integer getUnannotatedField() {
+            return this.unannotatedField;
+        }
+
+        public Double getNotNullNumber() {
+            return this.notNullNumber;
+        }
+
+        @NotNull
+        public Double getNotNullOnGetterNumber() {
+            return this.notNullOnGetterNumber;
+        }
+
+        public List<Object> getNotEmptyList() {
+            return this.notEmptyList;
+        }
+
+        @NotEmpty
+        public List<Object> getNotEmptyOnGetterList() {
+            return this.notEmptyOnGetterList;
+        }
+
+        public String getNotBlankString() {
+            return this.notBlankString;
+        }
+
+        @NotBlank
+        public String getNotBlankOnGetterString() {
+            return this.notBlankOnGetterString;
+        }
+
+        public Object getNullField() {
+            return this.nullField;
+        }
+
+        @Null
+        public Object getNullGetter() {
+            return this.nullGetter;
+        }
     }
 
     private static class TestClassForArrayItemCount {
@@ -249,15 +325,46 @@ public class JavaxValidationModuleTest {
         String[] unannotatedArray;
         @Size(min = 10, max = 20)
         String sizeTenToTwentyString;
+        String sizeTenToTwentyOnGetterString;
         @Size(min = 5)
         int[] minSizeFiveArray;
+        int[] minSizeFiveOnGetterArray;
         @Size(max = 50)
         long[] maxSizeFiftyArray;
+        long[] maxSizeFiftyOnGetterArray;
         @Size(min = 10, max = 20)
         Set<Boolean> sizeTenToTwentySet;
+        Set<Boolean> sizeTenToTwentyOnGetterSet;
         @NotEmpty
         @Size(max = 100)
         List<Double> nonEmptyMaxSizeHundredList;
+        List<Double> nonEmptyMaxSizeHundredOnGetterList;
+
+        @Size(min = 10, max = 20)
+        public String getSizeTenToTwentyString() {
+            return this.sizeTenToTwentyString;
+        }
+
+        @Size(min = 5)
+        public int[] getMinSizeFiveOnGetterArray() {
+            return this.minSizeFiveOnGetterArray;
+        }
+
+        @Size(max = 50)
+        public long[] getMaxSizeFiftyOnGetterArray() {
+            return this.maxSizeFiftyOnGetterArray;
+        }
+
+        @Size(min = 10, max = 20)
+        public Set<Boolean> getSizeTenToTwentyOnGetterSet() {
+            return this.sizeTenToTwentyOnGetterSet;
+        }
+
+        @NotEmpty
+        @Size(max = 100)
+        public List<Double> getNonEmptyMaxSizeHundredOnGetterList() {
+            return this.nonEmptyMaxSizeHundredOnGetterList;
+        }
     }
 
     private static class TestClassForStringLength {
@@ -265,17 +372,54 @@ public class JavaxValidationModuleTest {
         String unannotatedString;
         @Size(min = 10, max = 20)
         int[] sizeTenToTwentyArray;
+        int[] sizeTenToTwentyOnGetterArray;
         @Size(min = 5)
         CharSequence minSizeFiveSequence;
+        CharSequence minSizeFiveOnGetterSequence;
         @Size(max = 50)
         String maxSizeFiftyString;
+        String maxSizeFiftyOnGetterString;
         @Size(min = 10, max = 20)
         String sizeTenToTwentyString;
+        String sizeTenToTwentyOnGetterString;
         @NotEmpty
         @Size(max = 100)
         String nonEmptyMaxSizeHundredString;
+        String nonEmptyMaxSizeHundredOnGetterString;
         @NotBlank
         String nonBlankString;
+        String nonBlankOnGetterString;
+
+        @Size(min = 10, max = 20)
+        public int[] getSizeTenToTwentyOnGetterArray() {
+            return this.sizeTenToTwentyOnGetterArray;
+        }
+
+        @Size(min = 5)
+        public CharSequence getMinSizeFiveOnGetterSequence() {
+            return this.minSizeFiveOnGetterSequence;
+        }
+
+        @Size(max = 50)
+        public String getMaxSizeFiftyOnGetterString() {
+            return this.maxSizeFiftyOnGetterString;
+        }
+
+        @Size(min = 10, max = 20)
+        public String getSizeTenToTwentyOnGetterString() {
+            return this.sizeTenToTwentyOnGetterString;
+        }
+
+        @NotEmpty
+        @Size(max = 100)
+        public String getNonEmptyMaxSizeHundredOnGetterString() {
+            return this.nonEmptyMaxSizeHundredOnGetterString;
+        }
+
+        @NotBlank
+        public String getNonBlankOnGetterString() {
+            return this.nonBlankOnGetterString;
+        }
     }
 
     private static class TestClassForNumberMinMax {
@@ -283,21 +427,71 @@ public class JavaxValidationModuleTest {
         int unannotatedInt;
         @Min(-100L)
         long minMinusHundredLong;
+        long minMinusHundredOnGetterLong;
         @Max(50)
         short maxFiftyShort;
+        short maxFiftyOnGetterShort;
         @DecimalMin("10.1")
         @DecimalMax("20.2")
         Integer tenToTwentyInclusiveInteger;
+        Integer tenToTwentyInclusiveOnGetterInteger;
         @DecimalMin(value = "10.1", inclusive = false)
         @DecimalMax(value = "20.2", inclusive = false)
         Integer tenToTwentyExclusiveInteger;
+        Integer tenToTwentyExclusiveOnGetterInteger;
         @Positive
         byte positiveByte;
+        byte positiveOnGetterByte;
         @PositiveOrZero
         BigInteger positiveOrZeroBigInteger;
+        BigInteger positiveOrZeroOnGetterBigInteger;
         @Negative
         BigDecimal negativeDecimal;
+        BigDecimal negativeOnGetterDecimal;
         @NegativeOrZero
         Long negativeOrZeroLong;
+        Long negativeOrZeroOnGetterLong;
+
+        @Min(-100L)
+        public long getMinMinusHundredOnGetterLong() {
+            return minMinusHundredOnGetterLong;
+        }
+
+        @Max(50)
+        public short getMaxFiftyOnGetterShort() {
+            return maxFiftyOnGetterShort;
+        }
+
+        @DecimalMin("10.1")
+        @DecimalMax("20.2")
+        public Integer getTenToTwentyInclusiveOnGetterInteger() {
+            return tenToTwentyInclusiveOnGetterInteger;
+        }
+
+        @DecimalMin(value = "10.1", inclusive = false)
+        @DecimalMax(value = "20.2", inclusive = false)
+        public Integer getTenToTwentyExclusiveOnGetterInteger() {
+            return tenToTwentyExclusiveOnGetterInteger;
+        }
+
+        @Positive
+        public byte getPositiveOnGetterByte() {
+            return positiveOnGetterByte;
+        }
+
+        @PositiveOrZero
+        public BigInteger getPositiveOrZeroOnGetterBigInteger() {
+            return positiveOrZeroOnGetterBigInteger;
+        }
+
+        @Negative
+        public BigDecimal getNegativeOnGetterDecimal() {
+            return negativeOnGetterDecimal;
+        }
+
+        @NegativeOrZero
+        public Long getNegativeOrZeroOnGetterLong() {
+            return negativeOrZeroOnGetterLong;
+        }
     }
 }
