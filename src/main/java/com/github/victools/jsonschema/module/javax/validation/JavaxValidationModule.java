@@ -47,6 +47,7 @@ import javax.validation.constraints.Size;
  * JSON Schema Generation Module: based on annotations from the {@code javax.validation.constraints} package.
  * <ul>
  * <li>Determine whether a member is not nullable, base assumption being that all fields and method return values are nullable if not annotated.</li>
+ * <li>Optionally: also indicate all explicitly not nullable fields/methods to be required.</li>
  * <li>Populate "minItems" and "maxItems" for containers (i.e. arrays and collections).</li>
  * <li>Populate "minLength", "maxLength" and "format" for strings.</li>
  * <li>Optionally: populate "pattern" for strings.</li>
@@ -68,8 +69,17 @@ public class JavaxValidationModule implements Module {
 
     @Override
     public void applyToConfigBuilder(SchemaGeneratorConfigBuilder builder) {
-        this.applyToConfigPart(builder.forFields());
-        this.applyToConfigPart(builder.forMethods());
+        SchemaGeneratorConfigPart<FieldScope> fieldConfigPart = builder.forFields();
+        this.applyToConfigPart(fieldConfigPart);
+        if (this.options.contains(JavaxValidationOption.NOT_NULLABLE_FIELD_IS_REQUIRED)) {
+            fieldConfigPart.withRequiredCheck(this::isRequired);
+        }
+
+        SchemaGeneratorConfigPart<MethodScope> methodConfigPart = builder.forMethods();
+        this.applyToConfigPart(methodConfigPart);
+        if (this.options.contains(JavaxValidationOption.NOT_NULLABLE_METHOD_IS_REQUIRED)) {
+            methodConfigPart.withRequiredCheck(this::isRequired);
+        }
     }
 
     /**
@@ -141,6 +151,17 @@ public class JavaxValidationModule implements Module {
             result = null;
         }
         return result;
+    }
+
+    /**
+     * Determine whether a given field or method is deemed to be required in its parent type.
+     *
+     * @param member the field or method to check
+     * @return whether member is deemed to be required or not
+     */
+    protected boolean isRequired(MemberScope<?, ?> member) {
+        Boolean nullableCheckResult = this.isNullable(member);
+        return Boolean.FALSE.equals(nullableCheckResult);
     }
 
     /**

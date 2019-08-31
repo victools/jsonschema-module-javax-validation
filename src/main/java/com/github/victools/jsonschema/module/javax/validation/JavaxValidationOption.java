@@ -21,6 +21,14 @@ package com.github.victools.jsonschema.module.javax.validation;
  */
 public enum JavaxValidationOption {
     /**
+     * Use this option to add not-nullable fields to their parent's list of "required" properties.
+     */
+    NOT_NULLABLE_FIELD_IS_REQUIRED,
+    /**
+     * Use this option to add not-nullable methods to their parent's list of "required" properties.
+     */
+    NOT_NULLABLE_METHOD_IS_REQUIRED,
+    /**
      * Use this option to indicate the "idn-email" format instead of "email" when an {@code @Email} annotation is being found.
      */
     PREFER_IDN_EMAIL_FORMAT,
