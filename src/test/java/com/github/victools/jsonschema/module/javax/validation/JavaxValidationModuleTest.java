@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Set;
 import javax.validation.constraints.DecimalMax;
 import javax.validation.constraints.DecimalMin;
+import javax.validation.constraints.Email;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.Negative;
@@ -35,6 +36,7 @@ import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Null;
+import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Positive;
 import javax.validation.constraints.PositiveOrZero;
 import javax.validation.constraints.Size;
@@ -67,9 +69,68 @@ public class JavaxValidationModuleTest {
     }
 
     @Test
-    public void testApplyToConfigBuilder() {
+    public void testApplyToConfigBuilderWithDefaultOptions() {
         new JavaxValidationModule().applyToConfigBuilder(this.configBuilder);
 
+        this.verifyCommonConfigurations();
+
+        Mockito.verifyNoMoreInteractions(this.configBuilder, this.fieldConfigPart, this.methodConfigPart);
+    }
+
+    @Test
+    public void testApplyToConfigBuilderWithRequiredFieldsOption() {
+        new JavaxValidationModule(JavaxValidationOption.NOT_NULLABLE_FIELD_IS_REQUIRED)
+                .applyToConfigBuilder(this.configBuilder);
+
+        this.verifyCommonConfigurations();
+
+        Mockito.verify(this.fieldConfigPart).withRequiredCheck(Mockito.any());
+
+        Mockito.verifyNoMoreInteractions(this.configBuilder, this.fieldConfigPart, this.methodConfigPart);
+    }
+
+    @Test
+    public void testApplyToConfigBuilderWithRequiredMethodsOption() {
+        new JavaxValidationModule(JavaxValidationOption.NOT_NULLABLE_METHOD_IS_REQUIRED)
+                .applyToConfigBuilder(this.configBuilder);
+
+        this.verifyCommonConfigurations();
+
+        Mockito.verify(this.methodConfigPart).withRequiredCheck(Mockito.any());
+
+        Mockito.verifyNoMoreInteractions(this.configBuilder, this.fieldConfigPart, this.methodConfigPart);
+    }
+
+    @Test
+    public void testApplyToConfigBuilderWithPatternOption() {
+        new JavaxValidationModule(JavaxValidationOption.INCLUDE_PATTERN_EXPRESSIONS)
+                .applyToConfigBuilder(this.configBuilder);
+
+        this.verifyCommonConfigurations();
+
+        Mockito.verify(this.fieldConfigPart).withStringPatternResolver(Mockito.any());
+        Mockito.verify(this.methodConfigPart).withStringPatternResolver(Mockito.any());
+
+        Mockito.verifyNoMoreInteractions(this.configBuilder, this.fieldConfigPart, this.methodConfigPart);
+    }
+
+    @Test
+    public void testApplyToConfigBuilderWithAllOptions() {
+        new JavaxValidationModule(JavaxValidationOption.NOT_NULLABLE_FIELD_IS_REQUIRED, JavaxValidationOption.NOT_NULLABLE_METHOD_IS_REQUIRED,
+                JavaxValidationOption.INCLUDE_PATTERN_EXPRESSIONS)
+                .applyToConfigBuilder(this.configBuilder);
+
+        this.verifyCommonConfigurations();
+
+        Mockito.verify(this.fieldConfigPart).withRequiredCheck(Mockito.any());
+        Mockito.verify(this.methodConfigPart).withRequiredCheck(Mockito.any());
+        Mockito.verify(this.fieldConfigPart).withStringPatternResolver(Mockito.any());
+        Mockito.verify(this.methodConfigPart).withStringPatternResolver(Mockito.any());
+
+        Mockito.verifyNoMoreInteractions(this.configBuilder, this.fieldConfigPart, this.methodConfigPart);
+    }
+
+    private void verifyCommonConfigurations() {
         Mockito.verify(this.configBuilder).forFields();
         Mockito.verify(this.configBuilder).forMethods();
 
@@ -78,6 +139,7 @@ public class JavaxValidationModuleTest {
         Mockito.verify(this.fieldConfigPart).withArrayMaxItemsResolver(Mockito.any());
         Mockito.verify(this.fieldConfigPart).withStringMinLengthResolver(Mockito.any());
         Mockito.verify(this.fieldConfigPart).withStringMaxLengthResolver(Mockito.any());
+        Mockito.verify(this.fieldConfigPart).withStringFormatResolver(Mockito.any());
         Mockito.verify(this.fieldConfigPart).withNumberInclusiveMinimumResolver(Mockito.any());
         Mockito.verify(this.fieldConfigPart).withNumberExclusiveMinimumResolver(Mockito.any());
         Mockito.verify(this.fieldConfigPart).withNumberInclusiveMaximumResolver(Mockito.any());
@@ -88,12 +150,11 @@ public class JavaxValidationModuleTest {
         Mockito.verify(this.methodConfigPart).withArrayMaxItemsResolver(Mockito.any());
         Mockito.verify(this.methodConfigPart).withStringMinLengthResolver(Mockito.any());
         Mockito.verify(this.methodConfigPart).withStringMaxLengthResolver(Mockito.any());
+        Mockito.verify(this.methodConfigPart).withStringFormatResolver(Mockito.any());
         Mockito.verify(this.methodConfigPart).withNumberInclusiveMinimumResolver(Mockito.any());
         Mockito.verify(this.methodConfigPart).withNumberExclusiveMinimumResolver(Mockito.any());
         Mockito.verify(this.methodConfigPart).withNumberInclusiveMaximumResolver(Mockito.any());
         Mockito.verify(this.methodConfigPart).withNumberExclusiveMaximumResolver(Mockito.any());
-
-        Mockito.verifyNoMoreInteractions(this.configBuilder, this.fieldConfigPart, this.methodConfigPart);
     }
 
     Object parametersForTestNullableCheck() {
@@ -197,7 +258,7 @@ public class JavaxValidationModuleTest {
     public void testStringLengthResolvers(String fieldName, Integer expectedMinLength, Integer expectedMaxLength) throws Exception {
         new JavaxValidationModule().applyToConfigBuilder(this.configBuilder);
 
-        TestType testType = new TestType(TestClassForStringLength.class);
+        TestType testType = new TestType(TestClassForStringProperties.class);
         FieldScope field = testType.getMemberField(fieldName);
 
         ArgumentCaptor<ConfigFunction<FieldScope, Integer>> minLengthCaptor = ArgumentCaptor.forClass(ConfigFunction.class);
@@ -209,6 +270,48 @@ public class JavaxValidationModuleTest {
         Mockito.verify(this.fieldConfigPart).withStringMaxLengthResolver(maxLengthCaptor.capture());
         Integer maxLength = maxLengthCaptor.getValue().apply(field);
         Assert.assertEquals(expectedMaxLength, maxLength);
+    }
+
+    Object parametersForTestStringFormatAndPatternResolvers() {
+        JavaxValidationOption[] onlyPatternOption = new JavaxValidationOption[]{
+            JavaxValidationOption.INCLUDE_PATTERN_EXPRESSIONS
+        };
+        JavaxValidationOption[] patternAndIdnEmailOptions = new JavaxValidationOption[]{
+            JavaxValidationOption.INCLUDE_PATTERN_EXPRESSIONS, JavaxValidationOption.PREFER_IDN_EMAIL_FORMAT
+        };
+        return new Object[][]{
+            {"unannotatedString", onlyPatternOption, null, null},
+            {"sizeTenToTwentyArray", onlyPatternOption, null, null},
+            {"sizeTenToTwentyOnGetterArray", onlyPatternOption, null, null},
+            {"minSizeFiveSequence", onlyPatternOption, null, "^\\d+$"},
+            {"minSizeFiveOnGetterSequence", onlyPatternOption, null, "^\\d+$"},
+            {"nonEmptyMaxSizeHundredString", onlyPatternOption, "email", null},
+            {"nonEmptyMaxSizeHundredString", patternAndIdnEmailOptions, "idn-email", null},
+            {"nonEmptyMaxSizeHundredOnGetterString", onlyPatternOption, "email", null},
+            {"nonEmptyMaxSizeHundredOnGetterString", patternAndIdnEmailOptions, "idn-email", null},
+            {"nonBlankString", onlyPatternOption, "email", "^.+your-company\\.com$"},
+            {"nonBlankOnGetterString", onlyPatternOption, "email", "^.+your-company\\.com$"}
+        };
+    }
+
+    @Test
+    @Parameters
+    public void testStringFormatAndPatternResolvers(String fieldName, JavaxValidationOption[] options, String expectedFormat, String expectedPattern)
+            throws Exception {
+        new JavaxValidationModule(options).applyToConfigBuilder(this.configBuilder);
+
+        TestType testType = new TestType(TestClassForStringProperties.class);
+        FieldScope field = testType.getMemberField(fieldName);
+
+        ArgumentCaptor<ConfigFunction<FieldScope, String>> formatCaptor = ArgumentCaptor.forClass(ConfigFunction.class);
+        Mockito.verify(this.fieldConfigPart).withStringFormatResolver(formatCaptor.capture());
+        String formatValue = formatCaptor.getValue().apply(field);
+        Assert.assertEquals(expectedFormat, formatValue);
+
+        ArgumentCaptor<ConfigFunction<FieldScope, String>> patternCaptor = ArgumentCaptor.forClass(ConfigFunction.class);
+        Mockito.verify(this.fieldConfigPart).withStringPatternResolver(patternCaptor.capture());
+        String patternValue = patternCaptor.getValue().apply(field);
+        Assert.assertEquals(expectedPattern, patternValue);
     }
 
     Object parametersForTestNumberMinMaxResolvers() {
@@ -367,13 +470,16 @@ public class JavaxValidationModuleTest {
         }
     }
 
-    private static class TestClassForStringLength {
+    private static class TestClassForStringProperties {
 
         String unannotatedString;
         @Size(min = 10, max = 20)
+        @Email
+        @Pattern(regexp = ".*")
         int[] sizeTenToTwentyArray;
         int[] sizeTenToTwentyOnGetterArray;
         @Size(min = 5)
+        @Pattern(regexp = "^\\d+$")
         CharSequence minSizeFiveSequence;
         CharSequence minSizeFiveOnGetterSequence;
         @Size(max = 50)
@@ -384,18 +490,23 @@ public class JavaxValidationModuleTest {
         String sizeTenToTwentyOnGetterString;
         @NotEmpty
         @Size(max = 100)
+        @Email
         String nonEmptyMaxSizeHundredString;
         String nonEmptyMaxSizeHundredOnGetterString;
         @NotBlank
+        @Email(regexp = "^.+your-company\\.com$")
         String nonBlankString;
         String nonBlankOnGetterString;
 
         @Size(min = 10, max = 20)
+        @Email
+        @Pattern(regexp = ".*")
         public int[] getSizeTenToTwentyOnGetterArray() {
             return this.sizeTenToTwentyOnGetterArray;
         }
 
         @Size(min = 5)
+        @Pattern(regexp = "^\\d+$")
         public CharSequence getMinSizeFiveOnGetterSequence() {
             return this.minSizeFiveOnGetterSequence;
         }
@@ -412,11 +523,13 @@ public class JavaxValidationModuleTest {
 
         @NotEmpty
         @Size(max = 100)
+        @Email
         public String getNonEmptyMaxSizeHundredOnGetterString() {
             return this.nonEmptyMaxSizeHundredOnGetterString;
         }
 
         @NotBlank
+        @Email(regexp = "^.+your-company\\.com$")
         public String getNonBlankOnGetterString() {
             return this.nonBlankOnGetterString;
         }
