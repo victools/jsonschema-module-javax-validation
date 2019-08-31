@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Indicate a string's "format" to be "email" if `@Email` is present
+- Option for returning "idn-email" instead of "email" as "format" if `@Email` is present
 - Indicate a string's "pattern" according to regular expressions on `@Pattern` or `@Email` (ignoring specified flags)
 - Option for enabling the inclusion of "pattern" expressions (they are excluded by default)
 

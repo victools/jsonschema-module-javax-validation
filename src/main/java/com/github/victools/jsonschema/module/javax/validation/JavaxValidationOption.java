@@ -21,6 +21,10 @@ package com.github.victools.jsonschema.module.javax.validation;
  */
 public enum JavaxValidationOption {
     /**
+     * Use this option to indicate the "idn-email" format instead of "email" when an {@code @Email} annotation is being found.
+     */
+    PREFER_IDN_EMAIL_FORMAT,
+    /**
      * Use this option to include a string's "pattern" according to {@code @Pattern(regexp = "...")} or {@code @Email(regexp = "...")}.
      */
     INCLUDE_PATTERN_EXPRESSIONS;

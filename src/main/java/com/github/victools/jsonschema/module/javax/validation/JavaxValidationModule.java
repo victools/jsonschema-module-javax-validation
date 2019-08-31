@@ -48,7 +48,7 @@ import javax.validation.constraints.Size;
  * <ul>
  * <li>Determine whether a member is not nullable, base assumption being that all fields and method return values are nullable if not annotated.</li>
  * <li>Populate "minItems" and "maxItems" for containers (i.e. arrays and collections).</li>
- * <li>Populate "minLength" and "maxLength" for strings.</li>
+ * <li>Populate "minLength", "maxLength" and "format" for strings.</li>
  * <li>Optionally: populate "pattern" for strings.</li>
  * <li>Populate "minimum"/"exclusiveMinimum" and "maximum"/"exclusiveMaximum" for numbers.</li>
  * </ul>
@@ -83,6 +83,7 @@ public class JavaxValidationModule implements Module {
         configPart.withArrayMaxItemsResolver(this::resolveArrayMaxItems);
         configPart.withStringMinLengthResolver(this::resolveStringMinLength);
         configPart.withStringMaxLengthResolver(this::resolveStringMaxLength);
+        configPart.withStringFormatResolver(this::resolveStringFormat);
         configPart.withNumberInclusiveMinimumResolver(this::resolveNumberInclusiveMinimum);
         configPart.withNumberExclusiveMinimumResolver(this::resolveNumberExclusiveMinimum);
         configPart.withNumberInclusiveMaximumResolver(this::resolveNumberInclusiveMaximum);
@@ -218,6 +219,29 @@ public class JavaxValidationModule implements Module {
             if (sizeAnnotation != null && sizeAnnotation.max() < 2147483647) {
                 // maximum length below the default 2147483647 was specified
                 return sizeAnnotation.max();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Determine a given text type's format.
+     *
+     * @param member the field or method to check
+     * @return specified format (or null)
+     * @see Email
+     */
+    protected String resolveStringFormat(MemberScope<?, ?> member) {
+        if (member.getType().isInstanceOf(CharSequence.class)) {
+            Email emailAnnotation = this.getAnnotationFromFieldOrGetter(member, Email.class);
+            if (emailAnnotation != null) {
+                // @Email annotation was found, indicate the respective format
+                if (this.options.contains(JavaxValidationOption.PREFER_IDN_EMAIL_FORMAT)) {
+                    // the option was set to rather return the value for the internationalised email format
+                    return "idn-email";
+                }
+                // indicate standard internet email address format
+                return "email";
             }
         }
         return null;
