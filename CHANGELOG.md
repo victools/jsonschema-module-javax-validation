@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Indicate a string's "pattern" according to regular expressions on `@Pattern` or `@Email` (ignoring specified flags)
+- Option for enabling the inclusion of "pattern" expressions (they are excluded by default)
 
 ## [3.0.0] – 2019-06-10
 ### Added

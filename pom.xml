@@ -8,7 +8,7 @@
 
     <groupId>com.github.victools</groupId>
     <artifactId>jsonschema-module-javax-validation</artifactId>
-    <version>3.1.0-SNAPSHOT</version>
+    <version>3.2.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <licenses>
@@ -58,7 +58,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
-        <version.generator>3.0.0</version.generator>
+        <version.generator>3.2.0-SNAPSHOT</version.generator>
 
         <version.javax.validation>2.0.1.Final</version.javax.validation>
         <version.junit>4.12</version.junit>
