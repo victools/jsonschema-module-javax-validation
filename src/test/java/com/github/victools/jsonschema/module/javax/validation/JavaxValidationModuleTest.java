@@ -42,6 +42,7 @@ import javax.validation.constraints.PositiveOrZero;
 import javax.validation.constraints.Size;
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
+import junitparams.naming.TestCaseName;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -173,9 +174,35 @@ public class JavaxValidationModuleTest {
 
     @Test
     @Parameters(method = "parametersForTestNullableCheck")
-    public void testNullableCheckOnField(String fieldName, Boolean expectedResult) throws Exception {
+    public void testNullableCheckOnFieldNoValidationGroup(String fieldName, Boolean expectedResult) throws Exception {
         new JavaxValidationModule().applyToConfigBuilder(this.configBuilder);
 
+        this.testNullableCheckOnField(fieldName, expectedResult);
+    }
+
+    @Test
+    @Parameters(method = "parametersForTestNullableCheck")
+    public void testNullableCheckOnFieldMatchingValidationGroup(String fieldName, Boolean expectedResult) throws Exception {
+        new JavaxValidationModule()
+                .forValidationGroups(Test.class)
+                .applyToConfigBuilder(this.configBuilder);
+
+        this.testNullableCheckOnField(fieldName, expectedResult);
+    }
+
+    @Test
+    @Parameters(method = "parametersForTestNullableCheck")
+    @TestCaseName("{method}({0}) [{index}]")
+    public void testNullableCheckOnFieldDifferentValidationGroup(String fieldName, Boolean ignoredResult) throws Exception {
+        new JavaxValidationModule()
+                .forValidationGroups(Object.class)
+                .applyToConfigBuilder(this.configBuilder);
+
+        // none of the annotated values are actually expected to be returned
+        this.testNullableCheckOnField(fieldName, null);
+    }
+
+    private void testNullableCheckOnField(String fieldName, Boolean expectedResult) throws Exception {
         ArgumentCaptor<ConfigFunction<FieldScope, Boolean>> captor = ArgumentCaptor.forClass(ConfigFunction.class);
         Mockito.verify(this.fieldConfigPart).withNullableCheck(captor.capture());
         TestType testType = new TestType(TestClassForNullableCheck.class);
@@ -187,9 +214,35 @@ public class JavaxValidationModuleTest {
 
     @Test
     @Parameters(method = "parametersForTestNullableCheck")
-    public void testNullableCheckOnMethod(String fieldName, Boolean expectedResult) throws Exception {
+    public void testNullableCheckOnMethodNoValidationGroup(String fieldName, Boolean expectedResult) throws Exception {
         new JavaxValidationModule().applyToConfigBuilder(this.configBuilder);
 
+        this.testNullableCheckOnMethod(fieldName, expectedResult);
+    }
+
+    @Test
+    @Parameters(method = "parametersForTestNullableCheck")
+    public void testNullableCheckOnMethodMatchingValidationGroup(String fieldName, Boolean expectedResult) throws Exception {
+        new JavaxValidationModule()
+                .forValidationGroups(Test.class)
+                .applyToConfigBuilder(this.configBuilder);
+
+        this.testNullableCheckOnMethod(fieldName, expectedResult);
+    }
+
+    @Test
+    @Parameters(method = "parametersForTestNullableCheck")
+    @TestCaseName("{method}({0}) [{index}]")
+    public void testNullableCheckOnMethodDifferentValidationGroup(String fieldName, Boolean ignoredResult) throws Exception {
+        new JavaxValidationModule()
+                .forValidationGroups(Object.class)
+                .applyToConfigBuilder(this.configBuilder);
+
+        // none of the annotated values are actually expected to be returned
+        this.testNullableCheckOnMethod(fieldName, null);
+    }
+
+    private void testNullableCheckOnMethod(String fieldName, Boolean expectedResult) throws Exception {
         ArgumentCaptor<ConfigFunction<MethodScope, Boolean>> captor = ArgumentCaptor.forClass(ConfigFunction.class);
         Mockito.verify(this.methodConfigPart).withNullableCheck(captor.capture());
         TestType testType = new TestType(TestClassForNullableCheck.class);
@@ -217,10 +270,38 @@ public class JavaxValidationModuleTest {
     }
 
     @Test
-    @Parameters
-    public void testArrayItemCountResolvers(String fieldName, Integer expectedMinItems, Integer expectedMaxItems) throws Exception {
+    @Parameters(method = "parametersForTestArrayItemCountResolvers")
+    public void testArrayItemCountResolversNoValidationGroup(String fieldName, Integer expectedMinItems, Integer expectedMaxItems) throws Exception {
         new JavaxValidationModule().applyToConfigBuilder(this.configBuilder);
 
+        this.testArrayItemCountResolvers(fieldName, expectedMinItems, expectedMaxItems);
+    }
+
+    @Test
+    @Parameters(method = "parametersForTestArrayItemCountResolvers")
+    public void testArrayItemCountResolversMatchingValidationGroup(String fieldName, Integer expectedMinItems, Integer expectedMaxItems)
+            throws Exception {
+        new JavaxValidationModule()
+                .forValidationGroups(Test.class)
+                .applyToConfigBuilder(this.configBuilder);
+
+        this.testArrayItemCountResolvers(fieldName, expectedMinItems, expectedMaxItems);
+    }
+
+    @Test
+    @Parameters(method = "parametersForTestArrayItemCountResolvers")
+    @TestCaseName("{method}({0}) [{index}]")
+    public void testArrayItemCountResolversDifferentValidationGroup(String fieldName, Integer ignoredMinItems, Integer ignoredMaxItems)
+            throws Exception {
+        new JavaxValidationModule()
+                .forValidationGroups(Object.class)
+                .applyToConfigBuilder(this.configBuilder);
+
+        // none of the annotated values are actually expected to be returned
+        this.testArrayItemCountResolvers(fieldName, null, null);
+    }
+
+    private void testArrayItemCountResolvers(String fieldName, Integer expectedMinItems, Integer expectedMaxItems) throws Exception {
         TestType testType = new TestType(TestClassForArrayItemCount.class);
         FieldScope field = testType.getMemberField(fieldName);
 
@@ -254,10 +335,38 @@ public class JavaxValidationModuleTest {
     }
 
     @Test
-    @Parameters
-    public void testStringLengthResolvers(String fieldName, Integer expectedMinLength, Integer expectedMaxLength) throws Exception {
+    @Parameters(method = "parametersForTestStringLengthResolvers")
+    public void testStringLengthResolversNoValidationGroup(String fieldName, Integer expectedMinLength, Integer expectedMaxLength) throws Exception {
         new JavaxValidationModule().applyToConfigBuilder(this.configBuilder);
 
+        this.testStringLengthResolvers(fieldName, expectedMinLength, expectedMaxLength);
+    }
+
+    @Test
+    @Parameters(method = "parametersForTestStringLengthResolvers")
+    public void testStringLengthResolversMatchingValidationGroup(String fieldName, Integer expectedMinLength, Integer expectedMaxLength)
+            throws Exception {
+        new JavaxValidationModule()
+                .forValidationGroups(Test.class)
+                .applyToConfigBuilder(this.configBuilder);
+
+        this.testStringLengthResolvers(fieldName, expectedMinLength, expectedMaxLength);
+    }
+
+    @Test
+    @Parameters(method = "parametersForTestStringLengthResolvers")
+    @TestCaseName("{method}({0}) [{index}]")
+    public void testStringLengthResolversDifferentValidationGroup(String fieldName, Integer ignoredMinLength, Integer ignoredMaxLength)
+            throws Exception {
+        new JavaxValidationModule()
+                .forValidationGroups(Object.class)
+                .applyToConfigBuilder(this.configBuilder);
+
+        // none of the annotated values are actually expected to be returned
+        this.testStringLengthResolvers(fieldName, null, null);
+    }
+
+    private void testStringLengthResolvers(String fieldName, Integer expectedMinLength, Integer expectedMaxLength) throws Exception {
         TestType testType = new TestType(TestClassForStringProperties.class);
         FieldScope field = testType.getMemberField(fieldName);
 
@@ -295,11 +404,40 @@ public class JavaxValidationModuleTest {
     }
 
     @Test
-    @Parameters
-    public void testStringFormatAndPatternResolvers(String fieldName, JavaxValidationOption[] options, String expectedFormat, String expectedPattern)
-            throws Exception {
+    @Parameters(method = "parametersForTestStringFormatAndPatternResolvers")
+    public void testStringFormatAndPatternResolversNoValidationGroup(String fieldName, JavaxValidationOption[] options,
+            String expectedFormat, String expectedPattern) throws Exception {
         new JavaxValidationModule(options).applyToConfigBuilder(this.configBuilder);
 
+        this.testStringFormatAndPatternResolvers(fieldName, expectedFormat, expectedPattern);
+    }
+
+    @Test
+    @Parameters(method = "parametersForTestStringFormatAndPatternResolvers")
+    public void testStringFormatAndPatternResolversMatchingValidationGroup(String fieldName, JavaxValidationOption[] options,
+            String expectedFormat, String expectedPattern) throws Exception {
+        new JavaxValidationModule(options)
+                .forValidationGroups(Test.class)
+                .applyToConfigBuilder(this.configBuilder);
+
+        this.testStringFormatAndPatternResolvers(fieldName, expectedFormat, expectedPattern);
+    }
+
+    @Test
+    @Parameters(method = "parametersForTestStringFormatAndPatternResolvers")
+    @TestCaseName("{method}({0}, {1}) [{index}]")
+    public void testStringFormatAndPatternResolversDifferentValidationGroup(String fieldName, JavaxValidationOption[] options,
+            String ignoredFormat, String ignoredPattern) throws Exception {
+        new JavaxValidationModule(options)
+                .forValidationGroups(Object.class)
+                .applyToConfigBuilder(this.configBuilder);
+
+        // none of the annotated values are actually expected to be returned
+        this.testStringFormatAndPatternResolvers(fieldName, null, null);
+    }
+
+    private void testStringFormatAndPatternResolvers(String fieldName, String expectedFormat, String expectedPattern)
+            throws Exception {
         TestType testType = new TestType(TestClassForStringProperties.class);
         FieldScope field = testType.getMemberField(fieldName);
 
@@ -337,11 +475,40 @@ public class JavaxValidationModuleTest {
     }
 
     @Test
-    @Parameters
-    public void testNumberMinMaxResolvers(String fieldName, BigDecimal expectedMinInclusive, BigDecimal expectedMinExclusive,
+    @Parameters(method = "parametersForTestNumberMinMaxResolvers")
+    public void testNumberMinMaxResolversNoValidationGroup(String fieldName, BigDecimal expectedMinInclusive, BigDecimal expectedMinExclusive,
             BigDecimal expectedMaxInclusive, BigDecimal expectedMaxExclusive) throws Exception {
         new JavaxValidationModule().applyToConfigBuilder(this.configBuilder);
 
+        this.testNumberMinMaxResolvers(fieldName, expectedMinInclusive, expectedMinExclusive, expectedMaxInclusive, expectedMaxExclusive);
+    }
+
+    @Test
+    @Parameters(method = "parametersForTestNumberMinMaxResolvers")
+    public void testNumberMinMaxResolversMatchingValidationGroup(String fieldName, BigDecimal expectedMinInclusive, BigDecimal expectedMinExclusive,
+            BigDecimal expectedMaxInclusive, BigDecimal expectedMaxExclusive) throws Exception {
+        new JavaxValidationModule()
+                .forValidationGroups(Test.class)
+                .applyToConfigBuilder(this.configBuilder);
+
+        this.testNumberMinMaxResolvers(fieldName, expectedMinInclusive, expectedMinExclusive, expectedMaxInclusive, expectedMaxExclusive);
+    }
+
+    @Test
+    @Parameters(method = "parametersForTestNumberMinMaxResolvers")
+    @TestCaseName("{method}({0}) [{index}]")
+    public void testNumberMinMaxResolversDifferentValidationGroup(String fieldName, BigDecimal ignoredMinInclusive, BigDecimal ignoredMinExclusive,
+            BigDecimal ignoredMaxInclusive, BigDecimal ignoredMaxExclusive) throws Exception {
+        new JavaxValidationModule()
+                .forValidationGroups(Object.class)
+                .applyToConfigBuilder(this.configBuilder);
+
+        // none of the annotated values are actually expected to be returned
+        this.testNumberMinMaxResolvers(fieldName, null, null, null, null);
+    }
+
+    private void testNumberMinMaxResolvers(String fieldName, BigDecimal expectedMinInclusive, BigDecimal expectedMinExclusive,
+            BigDecimal expectedMaxInclusive, BigDecimal expectedMaxExclusive) {
         TestType testType = new TestType(TestClassForNumberMinMax.class);
         FieldScope field = testType.getMemberField(fieldName);
 
@@ -366,19 +533,60 @@ public class JavaxValidationModuleTest {
         Assert.assertEquals(expectedMaxExclusive, maxExclusive);
     }
 
+    public Object[] parametersForTestValidationGroupSetting() {
+        return new Object[][]{
+            {"skippedConfiguringGroups", "fieldWithoutValidationGroup", Boolean.TRUE, null},
+            {"skippedConfiguringGroups", "fieldWithSingleValidationGroup", Boolean.TRUE, null},
+            {"skippedConfiguringGroups", "fieldWithMultipleValidationGroups", Boolean.TRUE, null},
+            {"noConfiguredGroups", "fieldWithoutValidationGroup", Boolean.TRUE, new Class<?>[0]},
+            {"noConfiguredGroups", "fieldWithSingleValidationGroup", null, new Class<?>[0]},
+            {"noConfiguredGroups", "fieldWithMultipleValidationGroups", null, new Class<?>[0]},
+            {"singleConfiguredGroup", "fieldWithoutValidationGroup", Boolean.TRUE, new Class<?>[]{Test.class}},
+            {"singleConfiguredMatchingGroup", "fieldWithSingleValidationGroup", Boolean.TRUE, new Class<?>[]{Test.class}},
+            {"singleConfiguredMatchingGroup", "fieldWithMultipleValidationGroups", Boolean.TRUE, new Class<?>[]{Test.class}},
+            {"singleConfiguredDifferentGroup", "fieldWithSingleValidationGroup", null, new Class<?>[]{Object.class}},
+            {"singleConfiguredDifferentGroup", "fieldWithMultipleValidationGroups", null, new Class<?>[]{Object.class}},
+            {"multipleConfiguredGroups", "fieldWithoutValidationGroup", Boolean.TRUE, new Class<?>[]{Test.class, Object.class}},
+            {"multipleConfiguredGroupsSingleMatch", "fieldWithSingleValidationGroup", Boolean.TRUE, new Class<?>[]{Test.class, Object.class}},
+            {"multipleConfiguredGroupsSingleMatch", "fieldWithMultipleValidationGroups", Boolean.TRUE, new Class<?>[]{Test.class, Object.class}},
+            {"multipleConfiguredGroupsMultipleMatches", "fieldWithMultipleValidationGroups", Boolean.TRUE, new Class<?>[]{Test.class, Assert.class}},
+            {"multipleConfiguredGroupsNoMatch", "fieldWithSingleValidationGroup", null, new Class<?>[]{Integer.class, Double.class}},
+            {"multipleConfiguredGroupsNoMatch", "fieldWithMultipleValidationGroups", null, new Class<?>[]{Integer.class, Double.class}}
+        };
+    }
+
+    @Test
+    @Parameters
+    @TestCaseName("{method}({0}, {1}, {2}) [{index}]")
+    public void testValidationGroupSetting(String testCase, String fieldName, Boolean expectedResult, Class<?>[] validationGroups) {
+        JavaxValidationModule module = new JavaxValidationModule();
+        if (validationGroups != null) {
+            module.forValidationGroups(validationGroups);
+        }
+        module.applyToConfigBuilder(this.configBuilder);
+
+        ArgumentCaptor<ConfigFunction<FieldScope, Boolean>> captor = ArgumentCaptor.forClass(ConfigFunction.class);
+        Mockito.verify(this.fieldConfigPart).withNullableCheck(captor.capture());
+        TestType testType = new TestType(TestClassForValidationGroups.class);
+        FieldScope field = testType.getMemberField(fieldName);
+
+        Boolean result = captor.getValue().apply(field);
+        Assert.assertEquals(expectedResult, result);
+    }
+
     private static class TestClassForNullableCheck {
 
         Integer unannotatedField;
-        @NotNull
+        @NotNull(groups = Test.class)
         Double notNullNumber;
         Double notNullOnGetterNumber;
-        @NotEmpty
+        @NotEmpty(groups = Test.class)
         List<Object> notEmptyList;
         List<Object> notEmptyOnGetterList;
-        @NotBlank
+        @NotBlank(groups = Test.class)
         String notBlankString;
         String notBlankOnGetterString;
-        @Null
+        @Null(groups = Test.class)
         Object nullField;
         Object nullGetter;
 
@@ -390,7 +598,7 @@ public class JavaxValidationModuleTest {
             return this.notNullNumber;
         }
 
-        @NotNull
+        @NotNull(groups = Test.class)
         public Double getNotNullOnGetterNumber() {
             return this.notNullOnGetterNumber;
         }
@@ -399,7 +607,7 @@ public class JavaxValidationModuleTest {
             return this.notEmptyList;
         }
 
-        @NotEmpty
+        @NotEmpty(groups = Test.class)
         public List<Object> getNotEmptyOnGetterList() {
             return this.notEmptyOnGetterList;
         }
@@ -408,7 +616,7 @@ public class JavaxValidationModuleTest {
             return this.notBlankString;
         }
 
-        @NotBlank
+        @NotBlank(groups = Test.class)
         public String getNotBlankOnGetterString() {
             return this.notBlankOnGetterString;
         }
@@ -417,7 +625,7 @@ public class JavaxValidationModuleTest {
             return this.nullField;
         }
 
-        @Null
+        @Null(groups = Test.class)
         public Object getNullGetter() {
             return this.nullGetter;
         }
@@ -426,45 +634,45 @@ public class JavaxValidationModuleTest {
     private static class TestClassForArrayItemCount {
 
         String[] unannotatedArray;
-        @Size(min = 10, max = 20)
+        @Size(min = 10, max = 20, groups = Test.class)
         String sizeTenToTwentyString;
         String sizeTenToTwentyOnGetterString;
-        @Size(min = 5)
+        @Size(min = 5, groups = Test.class)
         int[] minSizeFiveArray;
         int[] minSizeFiveOnGetterArray;
-        @Size(max = 50)
+        @Size(max = 50, groups = Test.class)
         long[] maxSizeFiftyArray;
         long[] maxSizeFiftyOnGetterArray;
-        @Size(min = 10, max = 20)
+        @Size(min = 10, max = 20, groups = Test.class)
         Set<Boolean> sizeTenToTwentySet;
         Set<Boolean> sizeTenToTwentyOnGetterSet;
-        @NotEmpty
-        @Size(max = 100)
+        @NotEmpty(groups = Test.class)
+        @Size(max = 100, groups = Test.class)
         List<Double> nonEmptyMaxSizeHundredList;
         List<Double> nonEmptyMaxSizeHundredOnGetterList;
 
-        @Size(min = 10, max = 20)
+        @Size(min = 10, max = 20, groups = Test.class)
         public String getSizeTenToTwentyString() {
             return this.sizeTenToTwentyString;
         }
 
-        @Size(min = 5)
+        @Size(min = 5, groups = Test.class)
         public int[] getMinSizeFiveOnGetterArray() {
             return this.minSizeFiveOnGetterArray;
         }
 
-        @Size(max = 50)
+        @Size(max = 50, groups = Test.class)
         public long[] getMaxSizeFiftyOnGetterArray() {
             return this.maxSizeFiftyOnGetterArray;
         }
 
-        @Size(min = 10, max = 20)
+        @Size(min = 10, max = 20, groups = Test.class)
         public Set<Boolean> getSizeTenToTwentyOnGetterSet() {
             return this.sizeTenToTwentyOnGetterSet;
         }
 
-        @NotEmpty
-        @Size(max = 100)
+        @NotEmpty(groups = Test.class)
+        @Size(max = 100, groups = Test.class)
         public List<Double> getNonEmptyMaxSizeHundredOnGetterList() {
             return this.nonEmptyMaxSizeHundredOnGetterList;
         }
@@ -473,63 +681,63 @@ public class JavaxValidationModuleTest {
     private static class TestClassForStringProperties {
 
         String unannotatedString;
-        @Size(min = 10, max = 20)
-        @Email
-        @Pattern(regexp = ".*")
+        @Size(min = 10, max = 20, groups = Test.class)
+        @Email(groups = Test.class)
+        @Pattern(regexp = ".*", groups = Test.class)
         int[] sizeTenToTwentyArray;
         int[] sizeTenToTwentyOnGetterArray;
-        @Size(min = 5)
-        @Pattern(regexp = "^\\d+$")
+        @Size(min = 5, groups = Test.class)
+        @Pattern(regexp = "^\\d+$", groups = Test.class)
         CharSequence minSizeFiveSequence;
         CharSequence minSizeFiveOnGetterSequence;
-        @Size(max = 50)
+        @Size(max = 50, groups = Test.class)
         String maxSizeFiftyString;
         String maxSizeFiftyOnGetterString;
-        @Size(min = 10, max = 20)
+        @Size(min = 10, max = 20, groups = Test.class)
         String sizeTenToTwentyString;
         String sizeTenToTwentyOnGetterString;
-        @NotEmpty
-        @Size(max = 100)
-        @Email
+        @NotEmpty(groups = Test.class)
+        @Size(max = 100, groups = Test.class)
+        @Email(groups = Test.class)
         String nonEmptyMaxSizeHundredString;
         String nonEmptyMaxSizeHundredOnGetterString;
-        @NotBlank
-        @Email(regexp = "^.+your-company\\.com$")
+        @NotBlank(groups = Test.class)
+        @Email(regexp = "^.+your-company\\.com$", groups = Test.class)
         String nonBlankString;
         String nonBlankOnGetterString;
 
-        @Size(min = 10, max = 20)
-        @Email
-        @Pattern(regexp = ".*")
+        @Size(min = 10, max = 20, groups = Test.class)
+        @Email(groups = Test.class)
+        @Pattern(regexp = ".*", groups = Test.class)
         public int[] getSizeTenToTwentyOnGetterArray() {
             return this.sizeTenToTwentyOnGetterArray;
         }
 
-        @Size(min = 5)
-        @Pattern(regexp = "^\\d+$")
+        @Size(min = 5, groups = Test.class)
+        @Pattern(regexp = "^\\d+$", groups = Test.class)
         public CharSequence getMinSizeFiveOnGetterSequence() {
             return this.minSizeFiveOnGetterSequence;
         }
 
-        @Size(max = 50)
+        @Size(max = 50, groups = Test.class)
         public String getMaxSizeFiftyOnGetterString() {
             return this.maxSizeFiftyOnGetterString;
         }
 
-        @Size(min = 10, max = 20)
+        @Size(min = 10, max = 20, groups = Test.class)
         public String getSizeTenToTwentyOnGetterString() {
             return this.sizeTenToTwentyOnGetterString;
         }
 
-        @NotEmpty
-        @Size(max = 100)
-        @Email
+        @NotEmpty(groups = Test.class)
+        @Size(max = 100, groups = Test.class)
+        @Email(groups = Test.class)
         public String getNonEmptyMaxSizeHundredOnGetterString() {
             return this.nonEmptyMaxSizeHundredOnGetterString;
         }
 
-        @NotBlank
-        @Email(regexp = "^.+your-company\\.com$")
+        @NotBlank(groups = Test.class)
+        @Email(regexp = "^.+your-company\\.com$", groups = Test.class)
         public String getNonBlankOnGetterString() {
             return this.nonBlankOnGetterString;
         }
@@ -538,73 +746,83 @@ public class JavaxValidationModuleTest {
     private static class TestClassForNumberMinMax {
 
         int unannotatedInt;
-        @Min(-100L)
+        @Min(value = -100L, groups = Test.class)
         long minMinusHundredLong;
         long minMinusHundredOnGetterLong;
-        @Max(50)
+        @Max(value = 50, groups = Test.class)
         short maxFiftyShort;
         short maxFiftyOnGetterShort;
-        @DecimalMin("10.1")
-        @DecimalMax("20.2")
+        @DecimalMin(value = "10.1", groups = Test.class)
+        @DecimalMax(value = "20.2", groups = Test.class)
         Integer tenToTwentyInclusiveInteger;
         Integer tenToTwentyInclusiveOnGetterInteger;
-        @DecimalMin(value = "10.1", inclusive = false)
-        @DecimalMax(value = "20.2", inclusive = false)
+        @DecimalMin(value = "10.1", inclusive = false, groups = Test.class)
+        @DecimalMax(value = "20.2", inclusive = false, groups = Test.class)
         Integer tenToTwentyExclusiveInteger;
         Integer tenToTwentyExclusiveOnGetterInteger;
-        @Positive
+        @Positive(groups = Test.class)
         byte positiveByte;
         byte positiveOnGetterByte;
-        @PositiveOrZero
+        @PositiveOrZero(groups = Test.class)
         BigInteger positiveOrZeroBigInteger;
         BigInteger positiveOrZeroOnGetterBigInteger;
-        @Negative
+        @Negative(groups = Test.class)
         BigDecimal negativeDecimal;
         BigDecimal negativeOnGetterDecimal;
-        @NegativeOrZero
+        @NegativeOrZero(groups = Test.class)
         Long negativeOrZeroLong;
         Long negativeOrZeroOnGetterLong;
 
-        @Min(-100L)
+        @Min(value = -100L, groups = Test.class)
         public long getMinMinusHundredOnGetterLong() {
             return minMinusHundredOnGetterLong;
         }
 
-        @Max(50)
+        @Max(value = 50, groups = Test.class)
         public short getMaxFiftyOnGetterShort() {
             return maxFiftyOnGetterShort;
         }
 
-        @DecimalMin("10.1")
-        @DecimalMax("20.2")
+        @DecimalMin(value = "10.1", groups = Test.class)
+        @DecimalMax(value = "20.2", groups = Test.class)
         public Integer getTenToTwentyInclusiveOnGetterInteger() {
             return tenToTwentyInclusiveOnGetterInteger;
         }
 
-        @DecimalMin(value = "10.1", inclusive = false)
-        @DecimalMax(value = "20.2", inclusive = false)
+        @DecimalMin(value = "10.1", inclusive = false, groups = Test.class)
+        @DecimalMax(value = "20.2", inclusive = false, groups = Test.class)
         public Integer getTenToTwentyExclusiveOnGetterInteger() {
             return tenToTwentyExclusiveOnGetterInteger;
         }
 
-        @Positive
+        @Positive(groups = Test.class)
         public byte getPositiveOnGetterByte() {
             return positiveOnGetterByte;
         }
 
-        @PositiveOrZero
+        @PositiveOrZero(groups = Test.class)
         public BigInteger getPositiveOrZeroOnGetterBigInteger() {
             return positiveOrZeroOnGetterBigInteger;
         }
 
-        @Negative
+        @Negative(groups = Test.class)
         public BigDecimal getNegativeOnGetterDecimal() {
             return negativeOnGetterDecimal;
         }
 
-        @NegativeOrZero
+        @NegativeOrZero(groups = Test.class)
         public Long getNegativeOrZeroOnGetterLong() {
             return negativeOrZeroOnGetterLong;
         }
+    }
+
+    private static class TestClassForValidationGroups {
+
+        @Null
+        String fieldWithoutValidationGroup;
+        @Null(groups = Test.class)
+        String fieldWithSingleValidationGroup;
+        @Null(groups = {Test.class, Assert.class})
+        String fieldWithMultipleValidationGroups;
     }
 }

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Option for returning "idn-email" instead of "email" as "format" if `@Email` is present
 - Indicate a string's "pattern" according to regular expressions on `@Pattern` or `@Email` (ignoring specified flags)
 - Option for enabling the inclusion of "pattern" expressions (they are excluded by default)
+- Allow filtering applicable annotations by their declared validation `groups` via `JavaxValidationModule.forValidationGroups()`
 
 ## [3.0.0] – 2019-06-10
 ### Added
