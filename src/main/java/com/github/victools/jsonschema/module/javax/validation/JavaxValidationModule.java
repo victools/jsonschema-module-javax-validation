@@ -24,8 +24,12 @@ import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigPart;
 import java.lang.annotation.Annotation;
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import javax.validation.constraints.DecimalMax;
 import javax.validation.constraints.DecimalMin;
+import javax.validation.constraints.Email;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.Negative;
@@ -34,6 +38,7 @@ import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Null;
+import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Positive;
 import javax.validation.constraints.PositiveOrZero;
 import javax.validation.constraints.Size;
@@ -42,21 +47,43 @@ import javax.validation.constraints.Size;
  * JSON Schema Generation Module: based on annotations from the {@code javax.validation.constraints} package.
  * <ul>
  * <li>Determine whether a member is not nullable, base assumption being that all fields and method return values are nullable if not annotated.</li>
+ * <li>Optionally: also indicate all explicitly not nullable fields/methods to be required.</li>
  * <li>Populate "minItems" and "maxItems" for containers (i.e. arrays and collections).</li>
- * <li>Populate "minLength" and "maxLength" for strings.</li>
+ * <li>Populate "minLength", "maxLength" and "format" for strings.</li>
+ * <li>Optionally: populate "pattern" for strings.</li>
  * <li>Populate "minimum"/"exclusiveMinimum" and "maximum"/"exclusiveMaximum" for numbers.</li>
  * </ul>
  */
 public class JavaxValidationModule implements Module {
 
+    private final List<JavaxValidationOption> options;
+
+    /**
+     * Constructor.
+     *
+     * @param options features to enable
+     */
+    public JavaxValidationModule(JavaxValidationOption... options) {
+        this.options = options == null ? Collections.emptyList() : Arrays.asList(options);
+    }
+
     @Override
     public void applyToConfigBuilder(SchemaGeneratorConfigBuilder builder) {
-        this.applyToConfigPart(builder.forFields());
-        this.applyToConfigPart(builder.forMethods());
+        SchemaGeneratorConfigPart<FieldScope> fieldConfigPart = builder.forFields();
+        this.applyToConfigPart(fieldConfigPart);
+        if (this.options.contains(JavaxValidationOption.NOT_NULLABLE_FIELD_IS_REQUIRED)) {
+            fieldConfigPart.withRequiredCheck(this::isRequired);
+        }
+
+        SchemaGeneratorConfigPart<MethodScope> methodConfigPart = builder.forMethods();
+        this.applyToConfigPart(methodConfigPart);
+        if (this.options.contains(JavaxValidationOption.NOT_NULLABLE_METHOD_IS_REQUIRED)) {
+            methodConfigPart.withRequiredCheck(this::isRequired);
+        }
     }
 
     /**
-     * Apply the various annotation-based resolvers for the given configuration part (this expected to be executed for both fields and methods).
+     * Apply the various annotation-based resolvers for the given configuration part (this is expected to be executed for both fields and methods).
      *
      * @param configPart config builder part to add configurations to
      */
@@ -66,10 +93,15 @@ public class JavaxValidationModule implements Module {
         configPart.withArrayMaxItemsResolver(this::resolveArrayMaxItems);
         configPart.withStringMinLengthResolver(this::resolveStringMinLength);
         configPart.withStringMaxLengthResolver(this::resolveStringMaxLength);
+        configPart.withStringFormatResolver(this::resolveStringFormat);
         configPart.withNumberInclusiveMinimumResolver(this::resolveNumberInclusiveMinimum);
         configPart.withNumberExclusiveMinimumResolver(this::resolveNumberExclusiveMinimum);
         configPart.withNumberInclusiveMaximumResolver(this::resolveNumberInclusiveMaximum);
         configPart.withNumberExclusiveMaximumResolver(this::resolveNumberExclusiveMaximum);
+
+        if (this.options.contains(JavaxValidationOption.INCLUDE_PATTERN_EXPRESSIONS)) {
+            configPart.withStringPatternResolver(this::resolveStringPattern);
+        }
     }
 
     /**
@@ -119,6 +151,17 @@ public class JavaxValidationModule implements Module {
             result = null;
         }
         return result;
+    }
+
+    /**
+     * Determine whether a given field or method is deemed to be required in its parent type.
+     *
+     * @param member the field or method to check
+     * @return whether member is deemed to be required or not
+     */
+    protected boolean isRequired(MemberScope<?, ?> member) {
+        Boolean nullableCheckResult = this.isNullable(member);
+        return Boolean.FALSE.equals(nullableCheckResult);
     }
 
     /**
@@ -197,6 +240,52 @@ public class JavaxValidationModule implements Module {
             if (sizeAnnotation != null && sizeAnnotation.max() < 2147483647) {
                 // maximum length below the default 2147483647 was specified
                 return sizeAnnotation.max();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Determine a given text type's format.
+     *
+     * @param member the field or method to check
+     * @return specified format (or null)
+     * @see Email
+     */
+    protected String resolveStringFormat(MemberScope<?, ?> member) {
+        if (member.getType().isInstanceOf(CharSequence.class)) {
+            Email emailAnnotation = this.getAnnotationFromFieldOrGetter(member, Email.class);
+            if (emailAnnotation != null) {
+                // @Email annotation was found, indicate the respective format
+                if (this.options.contains(JavaxValidationOption.PREFER_IDN_EMAIL_FORMAT)) {
+                    // the option was set to rather return the value for the internationalised email format
+                    return "idn-email";
+                }
+                // indicate standard internet email address format
+                return "email";
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Determine a given text type's pattern.
+     *
+     * @param member the field or method to check
+     * @return specified pattern (or null)
+     * @see Pattern
+     */
+    protected String resolveStringPattern(MemberScope<?, ?> member) {
+        if (member.getType().isInstanceOf(CharSequence.class)) {
+            Pattern patternAnnotation = this.getAnnotationFromFieldOrGetter(member, Pattern.class);
+            if (patternAnnotation != null) {
+                // @Pattern annotation was found, return its (mandatory) regular expression
+                return patternAnnotation.regexp();
+            }
+            Email emailAnnotation = this.getAnnotationFromFieldOrGetter(member, Email.class);
+            if (emailAnnotation != null && !".*".equals(emailAnnotation.regexp())) {
+                // non-default regular expression on @Email annotation should also be considered
+                return emailAnnotation.regexp();
             }
         }
         return null;
