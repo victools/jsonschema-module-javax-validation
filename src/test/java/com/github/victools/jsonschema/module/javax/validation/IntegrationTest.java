@@ -86,32 +86,32 @@ public class IntegrationTest {
     static class TestClass {
 
         @Null
-        Object nullObject;
+        public Object nullObject;
 
         @NotNull
-        List<String> notNullList;
+        public List<String> notNullList;
         @NotEmpty
-        List<String> notEmptyList;
+        public List<String> notEmptyList;
         @Size(min = 3, max = 25)
-        List<String> sizeRangeList;
+        public List<String> sizeRangeList;
 
         @NotNull
         @Email(regexp = ".+@.+\\..+")
-        String notNullEmail;
+        public String notNullEmail;
         @NotEmpty
         @Pattern(regexp = "\\w+")
-        String notEmptyPatternText;
+        public String notEmptyPatternText;
         @NotBlank
-        String notBlankText;
+        public String notBlankText;
         @Size(min = 5, max = 12)
-        String sizeRangeText;
+        public String sizeRangeText;
 
         @Min(7)
         @Max(38)
-        int inclusiveRangeInt;
+        public int inclusiveRangeInt;
 
         @DecimalMin(value = "0", inclusive = false)
         @DecimalMax(value = "1", inclusive = false)
-        double exclusiveRangeDouble;
+        public double exclusiveRangeDouble;
     }
 }

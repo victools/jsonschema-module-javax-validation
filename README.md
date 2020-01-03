@@ -23,9 +23,13 @@ Schema attributes derived from validation annotations on getter methods are also
 <dependency>
     <groupId>com.github.victools</groupId>
     <artifactId>jsonschema-module-javax-validation</artifactId>
-    <version>3.2.0</version>
+    <version>4.0.0</version>
 </dependency>
 ```
+
+### Compatibility
+Please note that while the minor versions may differ, it is recommended to use matching major versions of the `jsonschema-generator` and this module.
+However, version 3.* of this module is also compatible with `jsonschema-generator` version 4.* (as no relevant features were removed/broken).
 
 ### Code
 #### Passing into SchemaGeneratorConfigBuilder.with(Module)
