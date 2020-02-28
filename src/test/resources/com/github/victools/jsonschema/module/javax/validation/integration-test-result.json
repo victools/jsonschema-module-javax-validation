@@ -38,9 +38,7 @@
                 "type": "string"
             }
         },
-        "nullObject": {
-            "type": ["object", "null"]
-        },
+        "nullObject": {},
         "sizeRangeList": {
             "minItems": 3,
             "maxItems": 25,
