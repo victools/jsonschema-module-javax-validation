@@ -143,18 +143,7 @@ public class JavaxValidationModule implements Module {
      */
     protected <A extends Annotation> A getAnnotationFromFieldOrGetter(MemberScope<?, ?> member, Class<A> annotationClass,
             Function<A, Class<?>[]> validationGroupsLookup) {
-        A annotation = member.getAnnotation(annotationClass);
-        if (annotation == null) {
-            MemberScope<?, ?> associatedGetterOrField;
-            if (member instanceof FieldScope) {
-                associatedGetterOrField = ((FieldScope) member).findGetter();
-            } else if (member instanceof MethodScope) {
-                associatedGetterOrField = ((MethodScope) member).findGetterField();
-            } else {
-                associatedGetterOrField = null;
-            }
-            annotation = associatedGetterOrField == null ? null : associatedGetterOrField.getAnnotation(annotationClass);
-        }
+        A annotation = member.getAnnotationConsideringFieldAndGetter(annotationClass);
         if (annotation != null) {
             Class<?>[] associatedGroups = validationGroupsLookup.apply(annotation);
             /*
